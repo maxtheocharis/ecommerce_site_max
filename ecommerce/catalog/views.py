@@ -2,6 +2,7 @@ from django.shortcuts      import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from .models               import Product, Cart, CartItem
 
+
 def product_list(request):
     products = Product.objects.all()
     return render(request, 'catalog/index.html', {'products': products})
@@ -24,3 +25,25 @@ def add_to_cart(request, pk):
 def view_cart(request):
     cart, _ = Cart.objects.get_or_create(user=request.user)
     return render(request, 'catalog/cart.html', {'cart': cart})
+
+
+@login_required
+def view_cart(request):
+    cart, _ = Cart.objects.get_or_create(user=request.user)
+    # Build a list of items with computed subtotals
+    items = []
+    total = 0
+    for ci in cart.items.select_related('product'):
+        subtotal = ci.product.price * ci.quantity
+        items.append({
+            'product': ci.product,
+            'quantity': ci.quantity,
+            'price':    ci.product.price,
+            'subtotal': subtotal,
+        })
+        total += subtotal
+
+    return render(request, 'catalog/cart.html', {
+        'items': items,
+        'total': total,
+    })
