@@ -1,9 +1,66 @@
 from django.shortcuts      import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
-from .models               import Product, Cart, CartItem
+from .models               import Product, Cart, CartItem, Order, OrderItem
 from django.shortcuts      import render, redirect
 from django.contrib.auth   import login
 from .forms                import SignUpForm
+
+
+
+
+@login_required
+def checkout(request):
+    cart, _ = Cart.objects.get_or_create(user=request.user)
+    cart_items = cart.items.select_related('product').all()
+
+    # Build a list of line‐items with subtotal
+    items = []
+    total = 0
+    for ci in cart_items:
+        price    = ci.product.price
+        quantity = ci.quantity
+        subtotal = price * quantity
+        items.append({
+            'product':  ci.product,
+            'quantity': quantity,
+            'price':    price,
+            'subtotal': subtotal,
+        })
+        total += subtotal
+
+    if request.method == 'POST':
+        # create the Order
+        order = Order.objects.create(
+            user=request.user,
+            total_price=total,
+            status='pending'
+        )
+        # create the OrderItems
+        for line in items:
+            OrderItem.objects.create(
+                order=order,
+                product=line['product'],
+                quantity=line['quantity'],
+                price=line['price'],
+            )
+        # clear the cart
+        cart.items.all().delete()
+        return redirect('thank_you')
+
+    return render(request, 'catalog/checkout.html', {
+        'items': items,
+        'total': total,
+    })
+
+
+@login_required
+def thank_you(request):
+    return render(request, 'catalog/thank_you.html')
+
+
+
+
+
 
 def signup(request):
     if request.method == 'POST':
