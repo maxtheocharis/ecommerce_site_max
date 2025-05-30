@@ -6,6 +6,30 @@ from django.contrib.auth   import login
 from .forms                import SignUpForm
 
 
+@login_required
+def update_cart_item(request, item_id):
+    """Handle quantity changes or removal of a cart item."""
+    ci = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
+
+    if request.method == 'POST':
+        # If they clicked “Remove”, delete it
+        if 'remove' in request.POST:
+            ci.delete()
+        else:
+            # Otherwise update quantity
+            qty = int(request.POST.get('quantity', ci.quantity))
+            if qty > 0:
+                ci.quantity = qty
+                ci.save()
+            else:
+                ci.delete()
+
+    return redirect('view_cart')
+
+
+
+
+
 
 
 @login_required
@@ -117,6 +141,32 @@ def view_cart(request):
         })
         total += subtotal
 
+    return render(request, 'catalog/cart.html', {
+        'items': items,
+        'total': total,
+    })
+
+
+@login_required
+def view_cart(request):
+    # 1) Get or create the user's cart
+    cart, _ = Cart.objects.get_or_create(user=request.user)
+
+    # 2) Build a list of items with computed subtotals
+    items = []
+    total = 0
+    for ci in cart.items.select_related('product'):
+        subtotal = ci.product.price * ci.quantity
+        items.append({
+            'id':       ci.id,
+            'product':  ci.product,
+            'quantity': ci.quantity,
+            'price':    ci.product.price,
+            'subtotal': subtotal,
+        })
+        total += subtotal
+
+    # 3) Render the cart template with our items and total
     return render(request, 'catalog/cart.html', {
         'items': items,
         'total': total,
