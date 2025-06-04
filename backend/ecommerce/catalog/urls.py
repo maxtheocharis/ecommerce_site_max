@@ -13,6 +13,8 @@ urlpatterns = [
     # View Cart (requires login)
     path("cart/", views.view_cart, name="view_cart"),
 
+    path("add-to-cart/<int:pk>/", views.add_to_cart, name="add_to_cart"),
+
     # Update or Remove a single CartItem (from cart page)
     path("cart/update/<int:pk>/", views.update_cart_item, name="update_cart_item"),
 

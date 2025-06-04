@@ -74,6 +74,24 @@ def update_cart_item(request, pk):
 
     return redirect("view_cart")
 
+def add_to_cart(request, pk):
+    """
+    Add the given product to the logged‐in user’s cart.
+    """
+    product = get_object_or_404(Product, pk=pk)
+
+    # Get or create the user’s Cart
+    cart, _ = Cart.objects.get_or_create(user=request.user)
+
+    # If there is already a CartItem for this product, increment quantity.
+    item, created = CartItem.objects.get_or_create(cart=cart, product=product)
+    if not created:
+        # if it already existed, bump the quantity by 1
+        item.quantity += 1
+        item.save()
+
+    return redirect("product_list")
+
 
 @login_required
 def checkout(request):
